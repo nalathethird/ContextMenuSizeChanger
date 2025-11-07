@@ -5,13 +5,13 @@ using ResoniteModLoader;
 using HarmonyLib;
 
 using FrooxEngine;
-using Renderite.Shared;
 using FrooxEngine.UIX;
+using Renderite.Shared;
 using Elements.Core;
 
 namespace ContextMenuCustomizer;
 public class ContextMenuCustomizer : ResoniteMod {
-	internal const string VERSION_CONSTANT = "1.0.0";
+	internal const string VERSION_CONSTANT = "1.0.1";
 	public override string Name => "ContextMenuCustomizer";
 	public override string Author => "NalaTheThird";
 	public override string Version => VERSION_CONSTANT;
@@ -89,20 +89,6 @@ public class ContextMenuCustomizer : ResoniteMod {
 		() => new color(1f, 1f, 1f, 1f)
 	);
 
-	[AutoRegisterConfigKey]
-	private static ModConfigurationKey<bool> KEY_ENABLE_GRADIENT = new ModConfigurationKey<bool>(
-		"EnableGradient",
-		"Enable color gradient on menu items (default: false)",
-		() => false
-	);
-
-	[AutoRegisterConfigKey]
-	private static ModConfigurationKey<color> KEY_GRADIENT_COLOR = new ModConfigurationKey<color>(
-		"GradientColor",
-		"Secondary color for gradient effect (requires EnableGradient)",
-		() => new color(0.5f, 0.5f, 1f, 1f)
-	);
-
 	// === ICON/SPRITE CUSTOMIZATION ===
 	[AutoRegisterConfigKey]
 	private static ModConfigurationKey<bool> KEY_CLAMP_ICONS = new ModConfigurationKey<bool>(
@@ -153,6 +139,13 @@ public class ContextMenuCustomizer : ResoniteMod {
 		"AcceptExistingTouch",
 		"Enable touch interaction from existing touch sources (default: true)",
 		() => true
+	);
+
+	[AutoRegisterConfigKey]
+	private static ModConfigurationKey<bool> KEY_LASER_PASSTHROUGH = new ModConfigurationKey<bool>(
+		"LaserPassThrough",
+		"Only interact with menu items, not empty space (default: false, useful with touch/Quest)",
+		() => false
 	);
 
 	// === TEXT CUSTOMIZATION ===
@@ -207,12 +200,15 @@ public class ContextMenuCustomizer : ResoniteMod {
 	);
 
 	private static ModConfiguration Config;
+	
+	// Track when settings need refresh
+	private static bool _needsMaterialRefresh = false;
 
 	public override void OnEngineInit() {
 		Config = GetConfiguration();
 		Config.OnThisConfigurationChanged += OnConfigurationChanged;
 
-		Harmony harmony = new("com.nalathethird.ContextMenuCustomizer");
+		Harmony harmony = new("com.NalaTheThird.ContextMenuCustomizer");
 		harmony.PatchAll();
 	}
 	
@@ -233,6 +229,9 @@ public class ContextMenuCustomizer : ResoniteMod {
 		ClampConfig(KEY_ARC_OUTLINE_THICKNESS, 0.0f, 10.0f);
 		ClampConfig(KEY_ARC_CORNER_RADIUS, 0.0f, 50.0f);
 		ClampConfig(KEY_MENU_OPACITY, 0.1f, 1.0f);
+		
+		// Mark materials for refresh (will apply on next menu open)
+		_needsMaterialRefresh = true;
 	}
 
 	private void ClampConfig(ModConfigurationKey<float> key, float min, float max) {
@@ -244,6 +243,9 @@ public class ContextMenuCustomizer : ResoniteMod {
 
 	// Cache to track which context menus we've already scaled
 	private static Dictionary<ContextMenu, FrooxEngine.Slot> _visualSlotCache = new Dictionary<ContextMenu, FrooxEngine.Slot>();
+	
+	// Cache for shared custom font component (one per ContextMenu)
+	private static Dictionary<ContextMenu, StaticFont> _customFontCache = new Dictionary<ContextMenu, StaticFont>();
 
 	// === PATCH: OnAttach - Set initial values and customize materials ===
 	[HarmonyPatch(typeof(ContextMenu), "OnAttach")]
@@ -265,16 +267,8 @@ public class ContextMenuCustomizer : ResoniteMod {
 			__instance.LabelSize.Value = new float2(labelWidth, labelHeight);
 			__instance.RadiusRatio.Value = innerRadius;
 
-			// Customize text material
-			float textOutline = Config?.GetValue(KEY_TEXT_OUTLINE) ?? 0.2f;
-			var fontMaterial = __instance.GetSyncMember(23) as SyncRef<UI_TextUnlitMaterial>;
-			if (fontMaterial?.Target != null) {
-				fontMaterial.Target.OutlineThickness.Value = textOutline;
-				
-				// Set custom text outline color
-				var outlineColor = Config?.GetValue(KEY_TEXT_OUTLINE_COLOR) ?? new color(0f, 0f, 0f, 1f);
-				fontMaterial.Target.OutlineColor.Value = new colorX(outlineColor.r, outlineColor.g, outlineColor.b, outlineColor.a);
-			}
+			// Apply material customizations
+			RefreshMenuMaterials(__instance);
 
 			// Configure touch interaction settings
 			var canvas = __instance.GetSyncMember(9) as SyncRef<Canvas>;
@@ -284,8 +278,86 @@ public class ContextMenuCustomizer : ResoniteMod {
 				
 				canvas.Target.AcceptPhysicalTouch.Value = acceptPhysicalTouch;
 				canvas.Target.AcceptExistingTouch.Value = acceptExistingTouch;
+			}
+			
+			// Create shared custom font component if needed
+			string customFontUrl = Config?.GetValue(KEY_CUSTOM_FONT_URL) ?? "";
+			if (!string.IsNullOrWhiteSpace(customFontUrl)) {
+				try {
+					Uri fontUri;
+					if (Uri.TryCreate(customFontUrl, UriKind.Absolute, out fontUri)) {
+						__instance.World.RunSynchronously(() => {
+							var fontSlot = __instance.Slot.FindChild("SharedCustomFont");
+							if (fontSlot == null) {
+								fontSlot = __instance.Slot.AddSlot("SharedCustomFont");
+							}
+							
+							var staticFont = fontSlot.GetComponent<StaticFont>();
+							if (staticFont == null) {
+								staticFont = fontSlot.AttachComponent<StaticFont>();
+							}
+							
+							staticFont.URL.Value = fontUri;
+							_customFontCache[__instance] = staticFont;
+						});
+					}
+				} catch (Exception e) {
+					Warn($"Failed to create shared custom font: {e.Message}");
+				}
+			}
+		}
+	}
+	
+	// === HELPER: Refresh material settings ===
+	private static void RefreshMenuMaterials(ContextMenu menu) {
+		try {
+			// Customize text material
+			float textOutline = Config?.GetValue(KEY_TEXT_OUTLINE) ?? 0.2f;
+			var fontMaterial = menu.GetSyncMember(23) as SyncRef<UI_TextUnlitMaterial>;
+			if (fontMaterial?.Target != null) {
+				fontMaterial.Target.OutlineThickness.Value = textOutline;
 				
-				Msg($"Touch settings - Physical: {acceptPhysicalTouch}, Existing: {acceptExistingTouch}");
+				// Set custom text outline color
+				var outlineColor = Config?.GetValue(KEY_TEXT_OUTLINE_COLOR) ?? new color(0f, 0f, 0f, 1f);
+				fontMaterial.Target.OutlineColor.Value = new colorX(outlineColor.r, outlineColor.g, outlineColor.b, outlineColor.a);
+			}
+		} catch (Exception e) {
+			Error($"Exception refreshing menu materials: {e}");
+		}
+	}
+
+	// === PATCH: OpenMenuIntern - Refresh settings before menu opens ===
+	[HarmonyPatch(typeof(ContextMenu), "OpenMenuIntern")]
+	class ContextMenu_OpenMenuIntern_Patch {
+		static bool Prepare() {
+			// Only patch if the method exists
+			return AccessTools.Method(typeof(ContextMenu), "OpenMenuIntern") != null;
+		}
+		
+		static void Prefix(ContextMenu __instance) {
+			try {
+				var canvas = __instance.GetSyncMember(9) as SyncRef<Canvas>;
+				if (canvas?.Target != null) {
+					__instance.World.RunSynchronously(() => {
+						// Refresh materials if config changed
+						if (_needsMaterialRefresh) {
+							RefreshMenuMaterials(__instance);
+							_needsMaterialRefresh = false;
+						}
+						
+						// Apply all canvas settings (touch + laser passthrough)
+						// Doing this on every menu open ensures settings are always current
+						bool acceptPhysicalTouch = Config?.GetValue(KEY_ACCEPT_PHYSICAL_TOUCH) ?? false;
+						bool acceptExistingTouch = Config?.GetValue(KEY_ACCEPT_EXISTING_TOUCH) ?? true;
+						bool laserPassThrough = Config?.GetValue(KEY_LASER_PASSTHROUGH) ?? false;
+						
+						canvas.Target.AcceptPhysicalTouch.Value = acceptPhysicalTouch;
+						canvas.Target.AcceptExistingTouch.Value = acceptExistingTouch;
+						canvas.Target.LaserPassThrough.Value = laserPassThrough;
+					}, immediatellyIfPossible: true);
+				}
+			} catch (Exception e) {
+				Error($"Exception in OpenMenuIntern prefix: {e}");
 			}
 		}
 	}
@@ -313,16 +385,17 @@ public class ContextMenuCustomizer : ResoniteMod {
 				float baseScale = 0.2f / 512f; // Canvas size is 512x512
 				visualSlot.LocalScale = float3.One * (baseScale * scaleMultiplier);
 			} else if (visualSlot != null && visualSlot.IsRemoved) {
-				// Clean up the cache if the slot was removed
+				// Clean up both caches if the slot was removed
 				_visualSlotCache.Remove(__instance);
+				_customFontCache.Remove(__instance);
 			}
 
 			// Apply opacity to color fades if different from default
 			if (!MathX.Approximately(menuOpacity, 1.0f)) {
-				var fillFade = __instance.GetSyncMember(36) as FieldDrive<colorX>;
-				var outlineFade = __instance.GetSyncMember(37) as FieldDrive<colorX>;
-				var textFade = __instance.GetSyncMember(38) as FieldDrive<colorX>;
-				var iconFade = __instance.GetSyncMember(39) as FieldDrive<colorX>;
+				var fillFade = __instance.GetSyncMember(37) as FieldDrive<colorX>;
+				var outlineFade = __instance.GetSyncMember(38) as FieldDrive<colorX>;
+				var textFade = __instance.GetSyncMember(39) as FieldDrive<colorX>;
+				var iconFade = __instance.GetSyncMember(40) as FieldDrive<colorX>;
 
 				// Multiply alpha by opacity for all fade drives
 				if (fillFade?.Target != null) {
@@ -357,17 +430,17 @@ public class ContextMenuCustomizer : ResoniteMod {
 				if (codes[i].opcode == OpCodes.Ldc_R4 && codes[i].operand is float floatValue) {
 					// Check if this is one of the speed constants
 					if (MathX.Approximately(floatValue, 6f)) {
-						// We need to determine if this is open or close speed based on context
-						// The close speed appears first in the method, open speed appears later
+						// NOTE: The first occurrence is OPEN speed, second is CLOSE speed
+						// (verified by testing - it was backwards before!)
 						if (patchCount == 0) {
-							// First occurrence - this is close speed
-							codes[i] = new CodeInstruction(OpCodes.Call,
-								AccessTools.Method(typeof(ContextMenu_OnCommonUpdate_Patch), nameof(GetCloseSpeed)));
-							patchCount++;
-						} else if (patchCount == 1) {
-							// Second occurrence - this is open speed
+							// First occurrence - this is OPEN speed
 							codes[i] = new CodeInstruction(OpCodes.Call,
 								AccessTools.Method(typeof(ContextMenu_OnCommonUpdate_Patch), nameof(GetOpenSpeed)));
+							patchCount++;
+						} else if (patchCount == 1) {
+							// Second occurrence - this is CLOSE speed
+							codes[i] = new CodeInstruction(OpCodes.Call,
+								AccessTools.Method(typeof(ContextMenu_OnCommonUpdate_Patch), nameof(GetCloseSpeed)));
 							patchCount++;
 						}
 					}
@@ -384,8 +457,6 @@ public class ContextMenuCustomizer : ResoniteMod {
 					}
 				}
 			}
-
-			Msg($"Patched {patchCount} animation/interaction constants in OnCommonUpdate");
 			return codes.AsEnumerable();
 		}
 
@@ -411,7 +482,7 @@ public class ContextMenuCustomizer : ResoniteMod {
 	}
 
 	// === PATCH: AddItem - THE ULTIMATE CUSTOMIZATION ===
-	[HarmonyPatch(typeof(ContextMenu), "AddItem")]
+	[HarmonyPatch]
 	class ContextMenu_AddItem_Patch {
 		static IEnumerable<MethodBase> TargetMethods() {
 			// Find the private AddItem method with the specific signature
@@ -433,17 +504,8 @@ public class ContextMenuCustomizer : ResoniteMod {
 				bool clampIcons = Config?.GetValue(KEY_CLAMP_ICONS) ?? true;
 				var textColor = Config?.GetValue(KEY_TEXT_COLOR) ?? new color(1f, 1f, 1f, 1f);
 				float lineHeight = Config?.GetValue(KEY_TEXT_LINE_HEIGHT) ?? 0.8f;
-				string customFontUrl = Config?.GetValue(KEY_CUSTOM_FONT_URL) ?? "";
-				
-				// Arc colors
-				var arcFillColor = Config?.GetValue(KEY_ARC_FILL_COLOR) ?? new color(0f, 0f, 0f, 0f);
-				var arcOutlineColor = Config?.GetValue(KEY_ARC_OUTLINE_COLOR) ?? new color(0f, 0f, 0f, 0f);
 				var iconTint = Config?.GetValue(KEY_ICON_TINT_COLOR) ?? new color(1f, 1f, 1f, 1f);
 				
-				// Gradient settings
-				bool enableGradient = Config?.GetValue(KEY_ENABLE_GRADIENT) ?? false;
-				var gradientColor = Config?.GetValue(KEY_GRADIENT_COLOR) ?? new color(0.5f, 0.5f, 1f, 1f);
-
 				// Find the text component
 				var text = __result.Slot.GetComponentInChildren<Text>();
 				if (text != null) {
@@ -453,59 +515,19 @@ public class ContextMenuCustomizer : ResoniteMod {
 					text.Color.Value = new colorX(textColor.r, textColor.g, textColor.b, textColor.a);
 					text.LineHeight.Value = lineHeight;
 
-					// Apply custom font if specified
-					if (!string.IsNullOrWhiteSpace(customFontUrl)) {
-						try {
-							Uri fontUri;
-							if (Uri.TryCreate(customFontUrl, UriKind.Absolute, out fontUri)) {
-								var world = __result.World;
-								world.RunSynchronously(() => {
-									var fontSlot = __result.Slot.FindChild("CustomFont");
-									if (fontSlot == null) {
-										fontSlot = __result.Slot.AddSlot("CustomFont");
-									}
-									
-									var staticFont = fontSlot.GetComponent<StaticFont>();
-									if (staticFont == null) {
-										staticFont = fontSlot.AttachComponent<StaticFont>();
-									}
-									
-									staticFont.URL.Value = fontUri;
-									text.Font.Target = staticFont;
-								});
-							}
-						} catch (Exception e) {
-							Warn($"Failed to load custom font from {customFontUrl}: {e.Message}");
-						}
+					// Apply shared custom font if available
+					if (_customFontCache.TryGetValue(__instance, out StaticFont sharedFont) && sharedFont != null) {
+						text.Font.Target = sharedFont;
 					}
 				}
 
-				// Find the arc component and apply colors
+				// Find the arc component and apply visual settings
 				var arc = __result.Slot.GetComponentInChildren<OutlinedArc>();
 				if (arc != null) {
 					arc.OutlineThickness.Value = arcOutline;
 					arc.RoundedCornerRadius.Value = arcCorner;
-					
-					// Get the arc's material (UI_CircleSegment) for color customization
-					var arcMaterial = arc.Material.Target as UI_CircleSegment;
-					
-					// Only apply custom arc colors if:
-					// 1. Alpha > 0 (user wants custom colors)
-					// 2. The material's tint fields are NOT driven (no ContextMenuItemSource override)
-					
-					if (arcMaterial != null) {
-						// Apply arc fill color if alpha > 0 and not driven
-						if (arcFillColor.a > 0f && !arcMaterial.FillTint.IsDriven) {
-							arcMaterial.FillTint.Value = new colorX(arcFillColor.r, arcFillColor.g, arcFillColor.b, arcFillColor.a);
-						}
-						
-						// Apply arc outline color if alpha > 0 and not driven
-						if (arcOutlineColor.a > 0f && !arcMaterial.OutlineTint.IsDriven) {
-							arcMaterial.OutlineTint.Value = new colorX(arcOutlineColor.r, arcOutlineColor.g, arcOutlineColor.b, arcOutlineColor.a);
-						}
-					}
 				}
-
+				
 				// Apply icon tint
 				var image = __result.Icon?.Target;
 				if (image != null) {
@@ -526,36 +548,6 @@ public class ContextMenuCustomizer : ResoniteMod {
 						}
 					}
 				}
-
-				// Apply gradient effect if enabled and material not driven
-				if (enableGradient && arc != null) {
-					var arcMaterial = arc.Material.Target as UI_CircleSegment;
-					if (arcMaterial != null && !arcMaterial.FillTint.IsDriven) {
-						__result.World.RunSynchronously(() => {
-							// Create a gradient by adding a gradient overlay
-							var gradientSlot = __result.Slot.FindChild("GradientEffect");
-							if (gradientSlot == null) {
-								gradientSlot = __result.Slot.AddSlot("GradientEffect");
-								var gradientImage = gradientSlot.AttachComponent<Image>();
-								
-								// Position gradient overlay
-								var rectTransform = gradientSlot.AttachComponent<RectTransform>();
-								rectTransform.AnchorMin.Value = float2.Zero;
-								rectTransform.AnchorMax.Value = float2.One;
-								rectTransform.OffsetMin.Value = float2.Zero;
-								rectTransform.OffsetMax.Value = float2.Zero;
-								
-								// Create gradient material
-								var gradientMat = gradientSlot.AttachComponent<UI_UnlitMaterial>();
-								gradientMat.Tint.Value = new colorX(gradientColor.r, gradientColor.g, gradientColor.b, gradientColor.a * 0.3f);
-								gradientImage.Material.Target = gradientMat;
-								
-								gradientMat.BlendMode.Value = BlendMode.Additive;
-							}
-						});
-					}
-				}
-
 			} catch (Exception e) {
 				Error($"Exception in AddItem patch: {e}");
 			}
