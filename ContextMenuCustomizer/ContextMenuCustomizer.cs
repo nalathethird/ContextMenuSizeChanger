@@ -5,7 +5,6 @@ using ResoniteModLoader;
 using HarmonyLib;
 
 using FrooxEngine;
-using FrooxEngine.UIX;
 using Renderite.Shared;
 using Elements.Core;
 
@@ -66,20 +65,6 @@ public class ContextMenuCustomizer : ResoniteMod {
 		"TextOutlineColor",
 		"Color for text outline (default: black)",
 		() => new color(0f, 0f, 0f, 1f)
-	);
-
-	[AutoRegisterConfigKey]
-	private static ModConfigurationKey<color> KEY_ARC_FILL_COLOR = new ModConfigurationKey<color>(
-		"ArcFillColor",
-		"Fill color for menu item backgrounds (default: disabled, set alpha > 0 to enable)",
-		() => new color(0f, 0f, 0f, 0f)
-	);
-
-	[AutoRegisterConfigKey]
-	private static ModConfigurationKey<color> KEY_ARC_OUTLINE_COLOR = new ModConfigurationKey<color>(
-		"ArcOutlineColor",
-		"Color for menu item borders (default: disabled, set alpha > 0 to enable)",
-		() => new color(0f, 0f, 0f, 0f)
 	);
 
 	[AutoRegisterConfigKey]
@@ -230,7 +215,6 @@ public class ContextMenuCustomizer : ResoniteMod {
 		ClampConfig(KEY_ARC_CORNER_RADIUS, 0.0f, 50.0f);
 		ClampConfig(KEY_MENU_OPACITY, 0.1f, 1.0f);
 		
-		// Mark materials for refresh (will apply on next menu open)
 		_needsMaterialRefresh = true;
 	}
 
@@ -247,7 +231,7 @@ public class ContextMenuCustomizer : ResoniteMod {
 	// Cache for shared custom font component (one per ContextMenu)
 	private static Dictionary<ContextMenu, StaticFont> _customFontCache = new Dictionary<ContextMenu, StaticFont>();
 
-	// === PATCH: OnAttach - Set initial values and customize materials ===
+	// === OnAttach - Set initial values and customize materials ===
 	[HarmonyPatch(typeof(ContextMenu), "OnAttach")]
 	class ContextMenu_OnAttach_Patch {
 		static void Postfix(ContextMenu __instance) {
@@ -444,7 +428,7 @@ public class ContextMenuCustomizer : ResoniteMod {
 							patchCount++;
 						}
 					}
-					// Exit distance constants
+					// Exit distance constants - these need smart adjustment for physical touch
 					else if (MathX.Approximately(floatValue, 0.9775f)) {
 						codes[i] = new CodeInstruction(OpCodes.Call,
 							AccessTools.Method(typeof(ContextMenu_OnCommonUpdate_Patch), nameof(GetExitStart)));
@@ -457,6 +441,8 @@ public class ContextMenuCustomizer : ResoniteMod {
 					}
 				}
 			}
+
+			Msg($"Patched {patchCount} animation/interaction constants in OnCommonUpdate");
 			return codes.AsEnumerable();
 		}
 
@@ -471,13 +457,38 @@ public class ContextMenuCustomizer : ResoniteMod {
 		}
 
 		static float GetExitStart() {
-			float multiplier = Config?.GetValue(KEY_EXIT_START) ?? 1.0f;
-			return 0.9775f * multiplier;
+			// Smart exit distance for physical touch
+			// If physical touch is enabled, we need larger distances so hand can reach buttons
+			// Otherwise use user's configured multiplier
+			bool physicalTouchEnabled = Config?.GetValue(KEY_ACCEPT_PHYSICAL_TOUCH) ?? false;
+			float userMultiplier = Config?.GetValue(KEY_EXIT_START) ?? 1.0f;
+			
+			if (physicalTouchEnabled) {
+				// For physical touch: use larger distance (min 2.0x) to allow hand to reach
+				// But respect user's setting if they want even larger
+				float touchMultiplier = MathX.Max(2.0f, userMultiplier);
+				return 0.9775f * touchMultiplier;
+			}
+			
+			// For laser/non-touch: use user's configured multiplier
+			return 0.9775f * userMultiplier;
 		}
 
 		static float GetExitEnd() {
-			float multiplier = Config?.GetValue(KEY_EXIT_END) ?? 1.0f;
-			return 1.4875001f * multiplier;
+			// Smart exit distance for physical touch
+			// Similar logic to ExitStart but with slightly larger multiplier
+			bool physicalTouchEnabled = Config?.GetValue(KEY_ACCEPT_PHYSICAL_TOUCH) ?? false;
+			float userMultiplier = Config?.GetValue(KEY_EXIT_END) ?? 1.0f;
+			
+			if (physicalTouchEnabled) {
+				// For physical touch: use larger distance (min 2.5x) for full close
+				// This ensures menu closes when hand moves far away
+				float touchMultiplier = MathX.Max(2.5f, userMultiplier);
+				return 1.4875001f * touchMultiplier;
+			}
+			
+			// For laser/non-touch: use user's configured multiplier
+			return 1.4875001f * userMultiplier;
 		}
 	}
 
