@@ -5,6 +5,7 @@ using ResoniteModLoader;
 using HarmonyLib;
 
 using FrooxEngine;
+using FrooxEngine.UIX;
 using Renderite.Shared;
 using Elements.Core;
 
