@@ -6,13 +6,11 @@ A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoade
 
 ---
 
-## **v1.0.0 - THE ULTIMATE RELEASE!**
+## **v1.0.1 - Better Context Menu Fixes Update**
 
 ### **Brand New Features:**
 - **Full Color Control** - Customize EVERYTHING! Text, arcs, outlines, icons!
-- **Gradient Effects** - Beautiful color blending across menu items
 - **Arc Fill & Outline Colors** - Make menus truly yours
-- **Icon Tinting** - Apply color filters to all icons
 - **Menu Opacity** - Semi-transparent menus for that sleek look
 - **Custom Fonts** - Use ANY font via resdb:// URLs
 - **Perfect Typography** - Line height, outline, and sizing control
@@ -35,19 +33,6 @@ A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoade
 #### Text Colors
 - **TextColor** - Main text color (RGBA)
 - **TextOutlineColor** - Text border color (RGBA)
-
-#### Arc Colors  
-- **ArcFillColor** - Menu item background (RGBA, alpha > 0 to enable)
-- **ArcOutlineColor** - Menu item borders (RGBA, alpha > 0 to enable)
-
-#### Icon Colors
-- **IconTintColor** - Color filter for all icons (RGBA)
-
-#### Gradient System
-- **EnableGradient** - Toggle gradient effects (true/false)
-- **GradientColor** - Secondary gradient color (RGBA)
-
----
 
 ### **Typography** (4 settings)
 - **TextSize** - Font size (20 to 100)
@@ -91,108 +76,6 @@ A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoade
 
 ---
 
-## **Preset Gallery**
-
-### **Cyberpunk Neon**
-```json
-{
-  "TextColor": { "r": 0, "g": 1, "b": 1, "a": 1 },
-  "TextOutlineColor": { "r": 1, "g": 0, "b": 1, "a": 1 },
-  "ArcFillColor": { "r": 0.1, "g": 0, "b": 0.3, "a": 0.8 },
-  "ArcOutlineColor": { "r": 0, "g": 1, "b": 1, "a": 1 },
-  "EnableGradient": true,
-  "GradientColor": { "r": 1, "g": 0, "b": 1, "a": 1 },
-  "TextOutlineThickness": 0.4,
-  "ArcCornerRadius": 30.0,
-  "MenuScale": 1.2
-}
-```
-
-### **Fire Glow**
-```json
-{
-  "TextColor": { "r": 1, "g": 1, "b": 0, "a": 1 },
-  "TextOutlineColor": { "r": 1, "g": 0.3, "b": 0, "a": 1 },
-  "ArcFillColor": { "r": 0.3, "g": 0, "b": 0, "a": 0.7 },
-  "ArcOutlineColor": { "r": 1, "g": 0.5, "b": 0, "a": 1 },
-  "EnableGradient": true,
-  "GradientColor": { "r": 1, "g": 0, "b": 0, "a": 1 },
-  "ArcOutlineThickness": 5.0,
-  "TextOutlineThickness": 0.3
-}
-```
-
-### **Crystal Clear**
-```json
-{
-  "MenuOpacity": 0.7,
-  "ArcFillColor": { "r": 0.8, "g": 0.9, "b": 1, "a": 0.3 },
-  "ArcOutlineColor": { "r": 1, "g": 1, "b": 1, "a": 0.6 },
-  "TextColor": { "r": 1, "g": 1, "b": 1, "a": 1 },
-  "TextOutlineColor": { "r": 0, "g": 0.5, "b": 1, "a": 1 },
-  "ArcCornerRadius": 25.0,
-  "TextOutlineThickness": 0.25
-}
-```
-
-### **Forest Theme**
-```json
-{
-  "TextColor": { "r": 0.9, "g": 1, "b": 0.7, "a": 1 },
-  "TextOutlineColor": { "r": 0.2, "g": 0.4, "b": 0.1, "a": 1 },
-  "ArcFillColor": { "r": 0.1, "g": 0.3, "b": 0.1, "a": 0.8 },
-  "ArcOutlineColor": { "r": 0.3, "g": 0.6, "b": 0.2, "a": 1 },
-  "IconTintColor": { "r": 0.7, "g": 1, "b": 0.5, "a": 1 }
-}
-```
-
-### **Ocean Wave**
-```json
-{
-  "EnableGradient": true,
-  "ArcFillColor": { "r": 0, "g": 0.3, "b": 0.6, "a": 0.7 },
-  "GradientColor": { "r": 0, "g": 0.8, "b": 1, "a": 1 },
-  "TextColor": { "r": 0.8, "g": 1, "b": 1, "a": 1 },
-  "ArcOutlineColor": { "r": 0, "g": 0.8, "b": 1, "a": 0.8 },
-  "ArcCornerRadius": 20.0
-}
-```
-
-### **Minimalist Ghost**
-```json
-{
-  "MenuOpacity": 0.5,
-  "ArcFillColor": { "r": 0, "g": 0, "b": 0, "a": 0.1 },
-  "ArcOutlineThickness": 1.0,
-  "ArcCornerRadius": 4.0,
-  "TextOutlineThickness": 0.1
-}
-```
-
-### **Golden Luxury**
-```json
-{
-  "TextColor": { "r": 1, "g": 0.95, "b": 0.6, "a": 1 },
-  "TextOutlineColor": { "r": 0.6, "g": 0.4, "b": 0, "a": 1 },
-  "ArcFillColor": { "r": 0.3, "g": 0.2, "b": 0, "a": 0.9 },
-  "ArcOutlineColor": { "r": 1, "g": 0.84, "b": 0, "a": 1 },
-  "TextOutlineThickness": 0.3,
-  "ArcOutlineThickness": 4.0,
-  "ArcCornerRadius": 15.0
-}
-```
-
-### **Cherry Blossom**
-```json
-{
-  "TextColor": { "r": 1, "g": 0.7, "b": 0.9, "a": 1 },
-  "ArcFillColor": { "r": 1, "g": 0.9, "b": 0.95, "a": 0.6 },
-  "ArcOutlineColor": { "r": 1, "g": 0.4, "b": 0.7, "a": 0.8 },
-  "EnableGradient": true,
-  "GradientColor": { "r": 1, "g": 0.6, "b": 0.8, "a": 1 },
-  "IconTintColor": { "r": 1, "g": 0.8, "b": 0.9, "a": 1 }
-}
-```
 
 ---
 
@@ -257,14 +140,6 @@ Perfect for **Quest users** and **touchscreen setups**!
 }
 ```
 
-**Touchscreen Only**:
-```json
-{
-  "AcceptPhysicalTouch": true,
-  "AcceptExistingTouch": false
-}
-```
-
 **VR Laser Only** (default):
 ```json
 {
@@ -272,29 +147,7 @@ Perfect for **Quest users** and **touchscreen setups**!
   "AcceptExistingTouch": true
 }
 ```
-
 ---
-
-## **Color Format Guide**
-
-Colors use RGBA (Red, Green, Blue, Alpha):
-- **Values**: 0.0 to 1.0 for each channel
-- **Alpha**: 1.0 = opaque, 0.0 = invisible
-
-### Quick Reference
-```
-Pure Red:    { r: 1,   g: 0,   b: 0,   a: 1 }
-Pure Green:  { r: 0,   g: 1,   b: 0,   a: 1 }
-Pure Blue:   { r: 0,   g: 0,   b: 1,   a: 1 }
-Yellow:      { r: 1,   g: 1,   b: 0,   a: 1 }
-Cyan:        { r: 0,   g: 1,   b: 1,   a: 1 }
-Magenta:     { r: 1,   g: 0,   b: 1,   a: 1 }
-Orange:      { r: 1,   g: 0.5, b: 0,   a: 1 }
-Purple:      { r: 0.5, g: 0,   b: 1,   a: 1 }
-White:       { r: 1,   g: 1,   b: 1,   a: 1 }
-Black:       { r: 0,   g: 0,   b: 0,   a: 1 }
-Gray:        { r: 0.5, g: 0.5, b: 0.5, a: 1 }
-```
 
 ---
 
@@ -307,72 +160,3 @@ Gray:        { r: 0.5, g: 0.5, b: 0.5, a: 1 }
 5. Configure and enjoy! ??
 
 ---
-
-## **Technical Details**
-
-### Harmony Patches
-1. **OnAttach**: Initial property setup, material customization
-2. **OnChanges**: Visual scaling, opacity application
-3. **OnCommonUpdate** (Transpiler): Animation speed & interaction distance
-4. **AddItem** (Postfix): Per-item colors, gradients, fonts, icons
-
-### Features
-- ? Slot-based scaling (uniform, functional)
-- ? Material-level color control
-- ? Dynamic gradient generation
-- ? Real-time opacity blending
-- ? Custom font loading with error handling
-- ? Icon texture mode fixing
-- ? No mod conflicts
-- ? Performance optimized with caching
-
----
-
-## **Changelog**
-
-### v1.0.0 - THE ULTIMATE RELEASE ??
-**Complete Visual Control System:**
-- Added 7 color customization settings
-- Added gradient system with secondary color
-- Added menu opacity control
-- Added arc fill & outline color override
-- Added icon tinting system
-- Added custom font URL support
-- Added text line height control
-- Fixed icon texture wrapping (Clamp mode)
-- Added comprehensive preset gallery
-- Total: **24 customization settings**
-
-**Core Features:**
-- Visual layout control (5 settings)
-- Complete color system (7 settings)
-- Typography customization (4 settings)
-- Icon & sprite handling (1 setting)
-- Arc visual control (2 settings)
-- Transparency system (1 setting)
-- Animation control (2 settings)
-- Interaction tweaking (2 settings)
-
-**Core Features:**
-- Visual layout control (5 settings)
-- Complete color system (7 settings)
-- Typography customization (4 settings)
-- Icon & sprite handling (1 setting)
-- Arc visual control (2 settings)
-- Transparency system (1 setting)
-- Animation control (2 settings)
-- Interaction tweaking (2 settings)
-- **Touch input control (2 settings)** ? NEW!
-
-**Touch Input System:**
-- Added AcceptPhysicalTouch - Direct touch interaction
-- Added AcceptExistingTouch - Existing touch source control
-- Perfect for Quest hand tracking and touchscreens
-- Full control over touch interaction behavior
-
-**Compatibility:**
-- Smart color override detection (respects ContextMenuItemSource)
-- IsDriven checks prevent conflicts with user content
-- Backwards compatible with existing menus
-
-**Total: 26 Customization Settings!**
