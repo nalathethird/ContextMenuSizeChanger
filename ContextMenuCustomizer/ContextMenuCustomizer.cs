@@ -236,6 +236,8 @@ public class ContextMenuCustomizer : ResoniteMod {
 	[HarmonyPatch(typeof(ContextMenu), "OnAttach")]
 	class ContextMenu_OnAttach_Patch {
 		static void Postfix(ContextMenu __instance) {
+			if (__instance.Slot.ActiveUserRoot.ActiveUser != __instance.LocalUser) return;
+
 			// Find and cache the Visual slot
 			FrooxEngine.Slot visualSlot = __instance.Slot.FindChild("Visual");
 			if (visualSlot != null) {
@@ -320,6 +322,7 @@ public class ContextMenuCustomizer : ResoniteMod {
 		}
 		
 		static void Prefix(ContextMenu __instance) {
+			if (__instance.Slot.ActiveUserRoot.ActiveUser != __instance.LocalUser) return;
 			try {
 				var canvas = __instance.GetSyncMember(9) as SyncRef<Canvas>;
 				if (canvas?.Target != null) {
@@ -351,6 +354,8 @@ public class ContextMenuCustomizer : ResoniteMod {
 	[HarmonyPatch(typeof(ContextMenu), "OnChanges")]
 	class ContextMenu_OnChanges_Patch {
 		static void Postfix(ContextMenu __instance) {
+			if (__instance.Slot.ActiveUserRoot.ActiveUser != __instance.LocalUser) return;
+
 			// Get the configured scale multiplier
 			float scaleMultiplier = Config?.GetValue(KEY_MENU_SCALE) ?? 1.0f;
 			float menuOpacity = Config?.GetValue(KEY_MENU_OPACITY) ?? 1.0f;
@@ -506,6 +511,7 @@ public class ContextMenuCustomizer : ResoniteMod {
 		}
 
 		static void Postfix(ContextMenu __instance, ContextMenuItem __result) {
+			if (__instance.Slot.ActiveUserRoot.ActiveUser != __instance.LocalUser) return;
 			if (__result == null) return;
 
 			try {
